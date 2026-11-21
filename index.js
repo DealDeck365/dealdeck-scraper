@@ -30,9 +30,17 @@ const LAUNCH_ARGS = [
 // Extract contact data from a rendered page
 async function extractContact(page, url) {
   return await page.evaluate((pageUrl) => {
+    // Decode HTML entities (handles &#x27; → ' and &amp; → & etc.)
+    const htmlDecode = (str) => {
+      if (!str) return str;
+      const el = document.createElement('div');
+      el.innerHTML = str;
+      return el.textContent || el.innerText || '';
+    };
+
     const getMeta = (selector) => {
       const el = document.querySelector(selector);
-      return el ? (el.getAttribute('content') || el.textContent || '').trim() : null;
+      return el ? htmlDecode((el.getAttribute('content') || el.textContent || '').trim()) : null;
     };
 
     const host = window.location.hostname;
@@ -45,7 +53,7 @@ async function extractContact(page, url) {
 
     // ── Scan all <a> tags for email / phone / social links ──
     document.querySelectorAll('a[href]').forEach((a) => {
-      const href = (a.getAttribute('href') || '').trim();
+      const href = htmlDecode((a.getAttribute('href') || '').trim());
       if (!href) return;
       if (href.startsWith('mailto:') && !email) {
         email = href.replace('mailto:', '').split('?')[0].trim();
@@ -105,8 +113,8 @@ async function extractContact(page, url) {
         document.title ||
         '';
       name = ogTitle
-        .replace(/[''’]s\s+(digital\s+)?business\s+card/gi, '')
-        .replace(/\s*[-|]\s*(hihello|blinq|popl|dealdeck).*/gi, '')
+        .replace(/[‘’’]s\s+(digital\s+)?(business|blinq|hihello|popl)\s+card/gi, ‘’)
+        .replace(/\s*[-|]\s*(hihello|blinq|popl|dealdeck).*/gi, ‘’)
         .trim();
     }
 
