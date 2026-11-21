@@ -113,9 +113,9 @@ async function extractContact(page, url) {
         document.title ||
         '';
       name = ogTitle
-        .replace(/[‘’’]s\s+(digital\s+)?(business|blinq|hihello|popl)\s+card/gi, ‘’)
-        .replace(/\s*[-|]\s*(hihello|blinq|popl|dealdeck).*/gi, ‘’)
-        .trim();
+        .replace(/[\u2018\u2019']s\s+(digital\s+)?(business|blinq|hihello|popl)\s+card/gi, '')
+        .replace(/[\u2018\u2019']s\s+(digital\s+)?(business|blinq|hihello|popl)\s+card/gi, '')
+        .replace(/\s*[-|]\s*(hihello|blinq|popl|dealdeck).*/gi, '')
     }
 
     // ── Fallback: description for title/company ──
