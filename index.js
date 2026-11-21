@@ -49,6 +49,7 @@ async function extractContact(page, url) {
     const isPopl = host.includes('popl');
 
     let name = null, title = null, company = null, email = null, phone = null;
+    let linkedin = null, website = null, bio = null;
     const links = [];
 
     // ── Scan all <a> tags for email / phone / social links ──
@@ -67,6 +68,37 @@ async function extractContact(page, url) {
         links.push(href);
       }
     });
+
+    // ── Route links: LinkedIn vs website ──
+    for (const href of links) {
+      try {
+        const u = new URL(href);
+        if (!linkedin && (u.hostname.includes('linkedin.com'))) {
+          linkedin = href;
+        } else if (!website && !u.hostname.includes('linkedin.com')) {
+          website = href;
+        }
+      } catch (_) {}
+    }
+
+    // ── Bio: try og:description, then platform-specific bio elements ──
+    const ogDesc =
+      getMeta('meta[property="og:description"]') ||
+      getMeta('meta[name="description"]') ||
+      null;
+    // Use og:description as bio only if it doesn't look like a "title | company" pattern
+    if (ogDesc && ogDesc.length > 40 && !/^.{0,60}[|·\-].{0,60}$/.test(ogDesc)) {
+      bio = ogDesc;
+    }
+    // Platform-specific bio selectors
+    if (!bio) {
+      const bioEl =
+        document.querySelector('[class*="bio"], [class*="Bio"], [class*="about"], [class*="About"], [class*="description"], [class*="tagline"], [class*="Tagline"]');
+      if (bioEl) {
+        const text = bioEl.textContent?.trim();
+        if (text && text.length > 20) bio = text;
+      }
+    }
 
     // ── HiHello ──
     if (isHiHello) {
@@ -141,6 +173,9 @@ async function extractContact(page, url) {
       company: company || null,
       email: email || null,
       phone: phone || null,
+      linkedin: linkedin || null,
+      website: website || null,
+      bio: bio || null,
       links: links.slice(0, 10),
       sourceUrl: pageUrl,
     };
