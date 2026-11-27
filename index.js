@@ -1,6 +1,7 @@
 
 const express = require('express');
 const puppeteer = require('puppeteer');
+const crypto = require('crypto');
 
 const app = express();
 app.use(express.json());
@@ -207,13 +208,32 @@ async function extractContact(page, url) {
   }, url);
 }
 
+// Only callers who know SCRAPER_KEY may use /scrape.
+// Until that variable is set on Render, everyone is still allowed.
+function hasKey(req) {
+  const expected = (process.env.SCRAPER_KEY || '').trim();
+  if (!expected) return true;
+  const hash = (v) => crypto.createHash('sha256').update(v).digest();
+  const given = String(req.get('x-scraper-key') || '').trim();
+  return crypto.timingSafeEqual(hash(given), hash(expected));
+}
+
 app.post('/scrape', async (req, res) => {
+  if (!hasKey(req)) {
+    return res.status(401).json({ error: 'Not allowed' });
+  }
+
   const { url } = req.body || {};
 
   if (!url) {
     return res.status(400).json({
       error: 'url is required'
     });
+  }
+
+  // Web pages only: never let the browser open local files.
+  if (!/^https?:\/\//i.test(String(url))) {
+    return res.status(400).json({ error: 'Only web links are allowed' });
   }
 
   let browser;
@@ -294,7 +314,8 @@ app.post('/scrape', async (req, res) => {
 app.get('/health', (_req, res) => {
   res.json({
     ok: true,
-    service: 'dealdeck-scraper'
+    service: 'dealdeck-scraper',
+    protected: Boolean((process.env.SCRAPER_KEY || '').trim())
   });
 });
 
